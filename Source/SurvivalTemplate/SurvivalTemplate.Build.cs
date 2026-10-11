@@ -8,10 +8,13 @@ public class SurvivalTemplate : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(["Core"]);
+		PublicDependencyModuleNames.AddRange(["Core", "GameplayTags"]);
 
-		PrivateDependencyModuleNames.AddRange(["CoreUObject", "Engine", "Slate", "SlateCore",
-		"GameplayTags","EnhancedInput","InputCore"
-		]);
+		PrivateDependencyModuleNames.AddRange(
+			[
+				"CoreUObject", "Engine", "Slate", "SlateCore",
+				"EnhancedInput", "InputCore"
+			]
+		);
 	}
 }
