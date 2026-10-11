@@ -34,7 +34,7 @@ protected:
 	float CrouchSpeed = 75.f;
 
 public:
-	ABaseCharacter();
+	ABaseCharacter(const FObjectInitializer& ObjectInitializer);
 
 	UFUNCTION(BlueprintPure, Category="Movement|Getter")
 	virtual float GetWalkSpeed() const { return WalkSpeed; }

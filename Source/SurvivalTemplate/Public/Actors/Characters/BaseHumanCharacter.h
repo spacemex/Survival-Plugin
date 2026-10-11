@@ -6,14 +6,11 @@
 #include "BaseCharacter.h"
 #include "BaseHumanCharacter.generated.h"
 
-
-
 UCLASS()
 class SURVIVALTEMPLATE_API ABaseHumanCharacter : public ABaseCharacter
 {
-private:
 	GENERATED_BODY()
 
 public:
-	ABaseHumanCharacter();
+	ABaseHumanCharacter(const FObjectInitializer& ObjectInitializer);
 };

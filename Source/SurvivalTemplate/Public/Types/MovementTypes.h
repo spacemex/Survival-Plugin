@@ -16,3 +16,11 @@ enum class EMovementState : uint8
 	MS_Swimming,
 	MS_Falling,
 };
+
+UENUM(BlueprintType)
+enum class EMovementGait : uint8
+{
+	MG_Walking,
+	MG_Jogging,
+	MG_Sprinting
+};

@@ -5,10 +5,14 @@
 
 #include "Components/LocomotionComponent.h"
 #include "Components/StatusComponent.h"
+#include "Components/SurvivalCharacterMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 
-ABaseCharacter::ABaseCharacter()
+ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer) : Super(
+	ObjectInitializer.SetDefaultSubobjectClass<USurvivalCharacterMovementComponent>(
+		ACharacter::CharacterMovementComponentName)
+)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicates(true);

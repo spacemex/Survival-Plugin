@@ -32,13 +32,22 @@ protected:
 
 private:
 	TWeakObjectPtr<ABaseCharacter> CharacterOwner;
-	
+
 public:
 	ULocomotionComponent();
-	
+
 	UFUNCTION(BlueprintPure, Category="Movement")
 	FGameplayTag GetCurrentMovementStateTag() const;
-	
+
 	UFUNCTION(BlueprintPure, Category="Movement")
 	EMovementState GetCurrentMovementState() const;
+
+	UFUNCTION(BlueprintPure, Category="Movement")
+	EMovementGait GetDesiredGait() const;
+
+	UFUNCTION(BlueprintPure, Category="Movement")
+	FGameplayTag GetAnimationMovementStateTag() const;
+
+	UFUNCTION(BlueprintCallable, Category="Movement")
+	void SetDesiredGait(EMovementGait NewGait);
 };

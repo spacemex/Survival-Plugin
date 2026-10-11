@@ -4,6 +4,7 @@
 #include "Components/LocomotionComponent.h"
 
 #include "Actors/Characters/BaseCharacter.h"
+#include "Components/SurvivalCharacterMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Types/SurvivalGameplayTags.h"
 
@@ -27,7 +28,7 @@ FGameplayTag ULocomotionComponent::GetCurrentMovementStateTag() const
 
 EMovementState ULocomotionComponent::GetCurrentMovementState() const
 {
-	const FGameplayTag State = GetCurrentMovementStateTag();
+	const FGameplayTag State = GetAnimationMovementStateTag();
 
 	using namespace SurvivalGameplayTags;
 
@@ -39,6 +40,47 @@ EMovementState ULocomotionComponent::GetCurrentMovementState() const
 	if (State == Movement_State_Falling) return EMovementState::MS_Falling;
 
 	return EMovementState::MS_Idle;
+}
+
+EMovementGait ULocomotionComponent::GetDesiredGait() const
+{
+	const ABaseCharacter* Character = CharacterOwner.Get();
+
+	if (!Character) return EMovementGait::MG_Jogging;
+
+	USurvivalCharacterMovementComponent* Movement = Cast<USurvivalCharacterMovementComponent>(
+		Character->GetCharacterMovement());
+
+	return Movement ? Movement->GetDesiredGait() : EMovementGait::MG_Jogging;
+}
+
+FGameplayTag ULocomotionComponent::GetAnimationMovementStateTag() const
+{
+	const ABaseCharacter* Character = CharacterOwner.Get();
+
+	if (!Character) return FGameplayTag();
+
+	if (Character && Character->IsLocallyControlled())
+	{
+		return CalculateMovementStateTag();
+	}
+
+	return CalculateMovementStateTag();
+}
+
+void ULocomotionComponent::SetDesiredGait(EMovementGait NewGait)
+{
+	const ABaseCharacter* Character = CharacterOwner.Get();
+
+	if (!Character) return;
+
+	USurvivalCharacterMovementComponent* Movement = Cast<USurvivalCharacterMovementComponent>(
+		Character->GetCharacterMovement());
+
+	if (Movement)
+	{
+		Movement->SetDesiredGait(NewGait);
+	}
 }
 
 void ULocomotionComponent::BeginPlay()
@@ -96,7 +138,8 @@ FGameplayTag ULocomotionComponent::CalculateMovementStateTag() const
 
 	if (!Character) return FGameplayTag();
 
-	const UCharacterMovementComponent* Movement = Character->GetCharacterMovement();
+	const USurvivalCharacterMovementComponent* Movement = Cast<USurvivalCharacterMovementComponent>(
+		Character->GetCharacterMovement());
 
 	if (!Movement) return FGameplayTag();
 
@@ -105,16 +148,13 @@ FGameplayTag ULocomotionComponent::CalculateMovementStateTag() const
 	if (Movement->IsFalling()) return Movement_State_Falling;
 	if (Movement->IsSwimming()) return Movement_State_Swimming;
 	if (Movement->IsCrouching()) return Movement_State_Crouching;
+	if (Movement->Velocity.Size2D() <= MinimumMovingSpeed) return Movement_State_Idle;
 
-	const float Speed = Movement->Velocity.Size2D();
-
-	if (Speed <= MinimumMovingSpeed) return Movement_State_Idle;
-
-	const float WalkJogThreshold = (Character->GetWalkSpeed() + Character->GetJogSpeed()) * 0.5f;
-	const float JogSprintThreshold = (Character->GetJogSpeed() + Character->GetSprintSpeed()) * 0.5f;
-
-	if (Speed < WalkJogThreshold) return Movement_State_Walking;
-	if (Speed < JogSprintThreshold) return Movement_State_Jogging;
-
-	return Movement_State_Sprinting;
+	switch (Movement->GetEffectiveGait())
+	{
+	case EMovementGait::MG_Walking: return Movement_State_Walking;
+	case EMovementGait::MG_Sprinting: return Movement_State_Sprinting;
+	case EMovementGait::MG_Jogging: return Movement_State_Jogging;
+	default: return Movement_State_Jogging;
+	}
 }

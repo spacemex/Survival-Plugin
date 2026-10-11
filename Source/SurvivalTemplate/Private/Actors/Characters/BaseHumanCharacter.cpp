@@ -5,7 +5,8 @@
 
 #include "GameFramework/CharacterMovementComponent.h"
 
-ABaseHumanCharacter::ABaseHumanCharacter()
+
+ABaseHumanCharacter::ABaseHumanCharacter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = false;
 
