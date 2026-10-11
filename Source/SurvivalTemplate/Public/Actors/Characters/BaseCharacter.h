@@ -5,8 +5,10 @@
 #include "CoreMinimal.h"
 #include "Components/StatusComponent.h"
 #include "GameFramework/Character.h"
-#include "Types/MovementTypes.h"
 #include "BaseCharacter.generated.h"
+
+class ULocomotionComponent;
+class UStatusComponent;
 
 UCLASS(Abstract)
 class SURVIVALTEMPLATE_API ABaseCharacter : public ACharacter
@@ -15,8 +17,12 @@ private:
 	GENERATED_BODY()
 
 protected:
+	virtual void BeginPlay() override;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	TObjectPtr<UStatusComponent> StatusComponent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	TObjectPtr<ULocomotionComponent> LocomotionComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float WalkSpeed = 200.f;
@@ -43,5 +49,8 @@ public:
 	virtual float GetCrouchSpeed() const { return CrouchSpeed; }
 
 	UFUNCTION(BlueprintPure, Category="Components")
-	TObjectPtr<UStatusComponent> GetStatusComponent() const { return StatusComponent; }
+	UStatusComponent* GetStatusComponent() const { return StatusComponent; }
+
+	UFUNCTION(BlueprintPure, Category="Components")
+	ULocomotionComponent* GetLocomotionComponent() const { return LocomotionComponent; }
 };

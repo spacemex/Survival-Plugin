@@ -32,6 +32,9 @@ public:
 	FOnStatusTagChanged OnStatusTagChanged;
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category="Status")
+	bool SetExclusiveStatusTag(FGameplayTag ParentTag, FGameplayTag NewTag);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category="Status")
 	bool AddStatusTag(const FGameplayTag Tag);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category="Status")
@@ -39,6 +42,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Status")
 	bool HasStatusTag(const FGameplayTag Tag) const;
+
+	UFUNCTION(BlueprintPure, Category="Status")
+	FGameplayTag GetExclusiveStatusTag(FGameplayTag ParentTag) const;
 
 	UFUNCTION(BlueprintPure, Category="Status")
 	FGameplayTagContainer GetStatusTags() const;

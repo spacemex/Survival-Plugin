@@ -1,0 +1,19 @@
+﻿// Copyright All Rights Reserved. Deven Shona / Space_Mex
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "NativeGameplayTags.h"
+
+namespace SurvivalGameplayTags
+{
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State);
+	
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Idle);
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Walking);
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Jogging);
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Sprinting);
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Crouching);
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Swimming);
+	SURVIVALTEMPLATE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Movement_State_Falling);
+}

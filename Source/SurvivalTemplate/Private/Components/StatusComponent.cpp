@@ -41,6 +41,49 @@ void UStatusComponent::NotifyTagChanged(FGameplayTag Tag, bool bAdded)
 	OnStatusTagChanged.Broadcast(Tag, bAdded);
 }
 
+bool UStatusComponent::SetExclusiveStatusTag(FGameplayTag ParentTag, FGameplayTag NewTag)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return false;
+	if (!ParentTag.IsValid() || !NewTag.IsValid()) return false;
+	if (NewTag == ParentTag || !NewTag.MatchesTag(ParentTag)) return false;
+
+	TArray<FGameplayTag> TagsToRemove;
+
+	for (const auto& Tag : StatusTags.GetGameplayTagArray())
+	{
+		if (Tag != NewTag && Tag != ParentTag && Tag.MatchesTag(ParentTag))
+		{
+			TagsToRemove.Add(Tag);
+		}
+	}
+
+	const bool bNeedsAdd = !StatusTags.HasTagExact(NewTag);
+
+	if (TagsToRemove.IsEmpty() && !bNeedsAdd) return false;
+
+	for (const auto& Tag : TagsToRemove)
+	{
+		StatusTags.RemoveTag(Tag);
+	}
+
+	if (bNeedsAdd)
+	{
+		StatusTags.AddTag(NewTag);
+	}
+
+	for (const auto& Tag : TagsToRemove)
+	{
+		NotifyTagChanged(Tag, false);
+	}
+
+	if (bNeedsAdd)
+	{
+		NotifyTagChanged(NewTag, true);
+	}
+
+	return true;
+}
+
 bool UStatusComponent::AddStatusTag(const FGameplayTag Tag)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return false;
@@ -64,6 +107,21 @@ bool UStatusComponent::RemoveStatusTag(const FGameplayTag Tag)
 bool UStatusComponent::HasStatusTag(const FGameplayTag Tag) const
 {
 	return StatusTags.HasTag(Tag);
+}
+
+FGameplayTag UStatusComponent::GetExclusiveStatusTag(FGameplayTag ParentTag) const
+{
+	if (!ParentTag.IsValid()) return FGameplayTag();
+
+	for (const auto& Tag : StatusTags.GetGameplayTagArray())
+	{
+		if (Tag != ParentTag && Tag.MatchesTag(ParentTag))
+		{
+			return Tag;
+		}
+	}
+
+	return FGameplayTag();
 }
 
 FGameplayTagContainer UStatusComponent::GetStatusTags() const

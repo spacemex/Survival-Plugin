@@ -3,7 +3,11 @@
 
 #include "Actors/Characters/BaseHumanCharacter.h"
 
+#include "GameFramework/CharacterMovementComponent.h"
+
 ABaseHumanCharacter::ABaseHumanCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
+
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 }
