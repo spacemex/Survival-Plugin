@@ -19,4 +19,9 @@ namespace SurvivalGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Movement_Restriction_NoCrouch, "Movement.Restriction.NoCrouch");
 	UE_DEFINE_GAMEPLAY_TAG(Movement_Restriction_NoMove, "Movement.Restriction.NoMove");
 	UE_DEFINE_GAMEPLAY_TAG(Movement_Restriction_NoSprint, "Movement.Restriction.NoSprint");
+
+	UE_DEFINE_GAMEPLAY_TAG(Status_Effect, "Status.Effect");
+
+	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Exhausted, "Status.Effect.Exhausted");
+	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Stunned, "Status.Effect.Stunned");
 }

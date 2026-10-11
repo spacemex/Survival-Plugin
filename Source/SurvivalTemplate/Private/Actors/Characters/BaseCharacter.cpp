@@ -3,6 +3,7 @@
 
 #include "Actors/Characters/BaseCharacter.h"
 
+#include "Components/CharacterEffectComponent.h"
 #include "Components/LocomotionComponent.h"
 #include "Components/StatusComponent.h"
 #include "Components/SurvivalCharacterMovementComponent.h"
@@ -19,6 +20,7 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer) : Su
 
 	StatusComponent = CreateDefaultSubobject<UStatusComponent>(TEXT("StatusComponent"));
 	LocomotionComponent = CreateDefaultSubobject<ULocomotionComponent>(TEXT("LocomotionComponent"));
+	CharacterEffectComponent = CreateDefaultSubobject<UCharacterEffectComponent>(TEXT("EffectComponent"));
 
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = false;
 }

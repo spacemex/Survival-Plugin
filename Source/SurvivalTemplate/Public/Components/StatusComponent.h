@@ -23,6 +23,9 @@ private:
 
 	void NotifyTagChanged(FGameplayTag Tag, bool bAdded);
 
+	TSet<FGameplayTag> DirectStatusTags;
+	TMap<FGameplayTag, int32> GrantedTagCounts;
+
 public:
 	UStatusComponent();
 
@@ -48,4 +51,7 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Status")
 	FGameplayTagContainer GetStatusTags() const;
+
+	bool GrantStatusTag(FGameplayTag Tag);
+	bool RevokeGrantedStatusTag(FGameplayTag Tag);
 };

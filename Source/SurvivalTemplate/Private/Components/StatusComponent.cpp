@@ -63,6 +63,7 @@ bool UStatusComponent::SetExclusiveStatusTag(FGameplayTag ParentTag, FGameplayTa
 
 	for (const auto& Tag : TagsToRemove)
 	{
+		DirectStatusTags.Remove(Tag);
 		StatusTags.RemoveTag(Tag);
 	}
 
@@ -86,21 +87,41 @@ bool UStatusComponent::SetExclusiveStatusTag(FGameplayTag ParentTag, FGameplayTa
 
 bool UStatusComponent::AddStatusTag(const FGameplayTag Tag)
 {
-	if (!GetOwner() || !GetOwner()->HasAuthority()) return false;
-	if (!Tag.IsValid() || StatusTags.HasTagExact(Tag)) return false;
+	if (!GetOwner() || !GetOwner()->HasAuthority())return false;
 
-	StatusTags.AddTag(Tag);
-	NotifyTagChanged(Tag, true);
+	if (!Tag.IsValid() || DirectStatusTags.Contains(Tag))return false;
+
+	DirectStatusTags.Add(Tag);
+
+	if (!StatusTags.HasTagExact(Tag))
+	{
+		StatusTags.AddTag(Tag);
+		NotifyTagChanged(Tag, true);
+	}
+
 	return true;
 }
 
 bool UStatusComponent::RemoveStatusTag(const FGameplayTag Tag)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return false;
-	if (!Tag.IsValid() || !StatusTags.HasTagExact(Tag)) return false;
 
-	StatusTags.RemoveTag(Tag);
-	NotifyTagChanged(Tag, false);
+	if (!Tag.IsValid()) return false;
+
+	const bool bWasDirect = DirectStatusTags.Remove(Tag) > 0;
+	const bool bHasGrants = GrantedTagCounts.FindRef(Tag) > 0;
+
+	if (!bWasDirect)
+	{
+		if (bHasGrants || !StatusTags.HasTagExact(Tag)) return false;
+	}
+
+	if (!bHasGrants && StatusTags.HasTagExact(Tag))
+	{
+		StatusTags.RemoveTag(Tag);
+		NotifyTagChanged(Tag, false);
+	}
+
 	return true;
 }
 
@@ -127,4 +148,47 @@ FGameplayTag UStatusComponent::GetExclusiveStatusTag(FGameplayTag ParentTag) con
 FGameplayTagContainer UStatusComponent::GetStatusTags() const
 {
 	return StatusTags;
+}
+
+bool UStatusComponent::GrantStatusTag(FGameplayTag Tag)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return false;
+
+	if (!Tag.IsValid())return false;
+
+	int32& Count = GrantedTagCounts.FindOrAdd(Tag);
+	++Count;
+
+	if (!StatusTags.HasTagExact(Tag))
+	{
+		StatusTags.AddTag(Tag);
+		NotifyTagChanged(Tag, true);
+	}
+
+	return true;
+}
+
+bool UStatusComponent::RevokeGrantedStatusTag(FGameplayTag Tag)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return false;
+
+	int32* Count = GrantedTagCounts.Find(Tag);
+
+	if (!Count || *Count <= 0) return false;
+
+	--(*Count);
+
+	if (*Count == 0)
+	{
+		GrantedTagCounts.Remove(Tag);
+
+		if (!DirectStatusTags.Contains(Tag) &&
+			StatusTags.HasTagExact(Tag))
+		{
+			StatusTags.RemoveTag(Tag);
+			NotifyTagChanged(Tag, false);
+		}
+	}
+
+	return true;
 }

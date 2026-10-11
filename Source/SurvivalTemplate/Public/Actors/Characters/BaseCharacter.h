@@ -9,6 +9,7 @@
 
 class ULocomotionComponent;
 class UStatusComponent;
+class UCharacterEffectComponent;
 
 UCLASS(Abstract)
 class SURVIVALTEMPLATE_API ABaseCharacter : public ACharacter
@@ -23,6 +24,8 @@ protected:
 	TObjectPtr<UStatusComponent> StatusComponent;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	TObjectPtr<ULocomotionComponent> LocomotionComponent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	TObjectPtr<UCharacterEffectComponent> CharacterEffectComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float WalkSpeed = 200.f;
@@ -53,4 +56,7 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Components")
 	ULocomotionComponent* GetLocomotionComponent() const { return LocomotionComponent; }
+
+	UFUNCTION(BlueprintPure, Category="Components")
+	UCharacterEffectComponent* GetCharacterEffectComponent() const { return CharacterEffectComponent; }
 };
