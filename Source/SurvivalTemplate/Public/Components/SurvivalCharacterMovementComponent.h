@@ -1,5 +1,6 @@
 ﻿// Copyright All Rights Reserved. Deven Shona / Space_Mex
 
+// ReSharper disable CppOverrideWithDifferentVisibility
 #pragma once
 
 #include "CoreMinimal.h"
@@ -14,7 +15,7 @@ class SURVIVALTEMPLATE_API USurvivalCharacterMovementComponent : public UCharact
 {
 private:
 	GENERATED_BODY()
-	
+
 	uint8 bWantsToWalk : 1;
 	uint8 bWantsToSprint : 1;
 
@@ -29,6 +30,8 @@ public:
 	virtual float GetMaxSpeed() const override;
 
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
-
+	virtual bool CanAttemptJump() const override;
+	virtual float GetMaxAcceleration() const override;
+	virtual bool CanCrouchInCurrentState() const override;
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
 };

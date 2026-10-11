@@ -93,6 +93,20 @@ public:
 	}
 };
 
+namespace
+{
+	bool HasMovementRestriction(const ACharacter* Character, const FGameplayTag& RestrictionTag)
+	{
+		const ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Character);
+
+		if (!BaseCharacter) return false;
+
+		const UStatusComponent* Status = BaseCharacter->GetStatusComponent();
+
+		return Status && Status->HasStatusTag(RestrictionTag);
+	}
+}
+
 // Client prediction
 class FNetworkPredictionData_Client_Survival : public FNetworkPredictionData_Client_Character
 {
@@ -130,21 +144,20 @@ EMovementGait USurvivalCharacterMovementComponent::GetDesiredGait() const
 	return EMovementGait::MG_Jogging;
 }
 
+
 EMovementGait USurvivalCharacterMovementComponent::GetEffectiveGait() const
 {
 	const EMovementGait Desired = GetDesiredGait();
 
-	const ABaseCharacter* Character = Cast<ABaseCharacter>(CharacterOwner);
-
-	if (!Character)
+	if (Desired != EMovementGait::MG_Sprinting)
 	{
 		return Desired;
 	}
 
-	const UStatusComponent* Status = Character->GetStatusComponent();
+	using namespace SurvivalGameplayTags;
 
-	if (Desired == EMovementGait::MG_Sprinting && Status && Status->HasStatusTag(
-		SurvivalGameplayTags::Movement_Restriction_NoSprint))
+	if (HasMovementRestriction(CharacterOwner, Movement_Restriction_NoSprint) ||
+		HasMovementRestriction(CharacterOwner, Movement_Restriction_NoMove))
 	{
 		return EMovementGait::MG_Jogging;
 	}
@@ -152,8 +165,14 @@ EMovementGait USurvivalCharacterMovementComponent::GetEffectiveGait() const
 	return Desired;
 }
 
+
 float USurvivalCharacterMovementComponent::GetMaxSpeed() const
 {
+	if (HasMovementRestriction(CharacterOwner, SurvivalGameplayTags::Movement_Restriction_NoMove))
+	{
+		return 0.f;
+	}
+
 	if (!IsMovingOnGround()) return Super::GetMaxSpeed();
 
 	const ABaseCharacter* Character = Cast<ABaseCharacter>(CharacterOwner);
@@ -177,6 +196,50 @@ void USurvivalCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 
 	bWantsToWalk = (Flags & FSavedMove_Character::FLAG_Custom_0) != 0;
 	bWantsToSprint = (Flags & FSavedMove_Character::FLAG_Custom_1) != 0;
+}
+
+bool USurvivalCharacterMovementComponent::CanAttemptJump() const
+{
+	using namespace SurvivalGameplayTags;
+
+	if (HasMovementRestriction(CharacterOwner, Movement_Restriction_NoJump))
+	{
+		return false;
+	}
+
+	if (HasMovementRestriction(CharacterOwner, Movement_Restriction_NoMove))
+	{
+		return false;
+	}
+
+	return Super::CanAttemptJump();
+}
+
+bool USurvivalCharacterMovementComponent::CanCrouchInCurrentState() const
+{
+	using namespace SurvivalGameplayTags;
+
+	if (HasMovementRestriction(CharacterOwner, Movement_Restriction_NoCrouch))
+	{
+		return false;
+	}
+
+	if (HasMovementRestriction(CharacterOwner, Movement_Restriction_NoMove))
+	{
+		return false;
+	}
+
+	return Super::CanCrouchInCurrentState();
+}
+
+float USurvivalCharacterMovementComponent::GetMaxAcceleration() const
+{
+	if (HasMovementRestriction(CharacterOwner, SurvivalGameplayTags::Movement_Restriction_NoMove))
+	{
+		return 0.f;
+	}
+
+	return Super::GetMaxAcceleration();
 }
 
 FNetworkPredictionData_Client* USurvivalCharacterMovementComponent::GetPredictionData_Client() const

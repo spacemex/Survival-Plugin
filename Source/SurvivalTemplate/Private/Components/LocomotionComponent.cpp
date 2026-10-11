@@ -54,19 +54,24 @@ EMovementGait ULocomotionComponent::GetDesiredGait() const
 	return Movement ? Movement->GetDesiredGait() : EMovementGait::MG_Jogging;
 }
 
+
 FGameplayTag ULocomotionComponent::GetAnimationMovementStateTag() const
 {
 	const ABaseCharacter* Character = CharacterOwner.Get();
 
-	if (!Character) return FGameplayTag();
+	if (!Character)
+	{
+		return FGameplayTag();
+	}
 
-	if (Character && Character->IsLocallyControlled())
+	if (Character->HasAuthority() || Character->IsLocallyControlled())
 	{
 		return CalculateMovementStateTag();
 	}
 
-	return CalculateMovementStateTag();
+	return GetCurrentMovementStateTag();
 }
+
 
 void ULocomotionComponent::SetDesiredGait(EMovementGait NewGait)
 {
