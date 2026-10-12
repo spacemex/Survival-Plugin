@@ -3,6 +3,7 @@
 #include "Actors/Characters/BaseCharacter.h"
 #include "Components/StatusComponent.h"
 #include "Types/SurvivalGameplayTags.h"
+#include "Components/CharacterEffectComponent.h"
 
 #include "GameFramework/Character.h"
 
@@ -144,7 +145,6 @@ EMovementGait USurvivalCharacterMovementComponent::GetDesiredGait() const
 	return EMovementGait::MG_Jogging;
 }
 
-
 EMovementGait USurvivalCharacterMovementComponent::GetEffectiveGait() const
 {
 	const EMovementGait Desired = GetDesiredGait();
@@ -165,29 +165,55 @@ EMovementGait USurvivalCharacterMovementComponent::GetEffectiveGait() const
 	return Desired;
 }
 
-
 float USurvivalCharacterMovementComponent::GetMaxSpeed() const
 {
-	if (HasMovementRestriction(CharacterOwner, SurvivalGameplayTags::Movement_Restriction_NoMove))
+	using namespace SurvivalGameplayTags;
+
+	if (HasMovementRestriction(CharacterOwner, Movement_Restriction_NoMove))
 	{
 		return 0.f;
 	}
 
-	if (!IsMovingOnGround()) return Super::GetMaxSpeed();
+	if (!IsMovingOnGround())
+	{
+		return Super::GetMaxSpeed();
+	}
 
 	const ABaseCharacter* Character = Cast<ABaseCharacter>(CharacterOwner);
 
-	if (!Character) return Super::GetMaxSpeed();
-
-	if (IsCrouching()) return FMath::Max(0.f, Character->GetCrouchSpeed());
-
-	switch (GetEffectiveGait())
+	if (!Character)
 	{
-	case EMovementGait::MG_Walking: return FMath::Max(0.f, Character->GetWalkSpeed());
-	case EMovementGait::MG_Sprinting: return FMath::Max(0.f, Character->GetSprintSpeed());
-	case EMovementGait::MG_Jogging:
-	default: return FMath::Max(0.f, Character->GetJogSpeed());
+		return Super::GetMaxSpeed();
 	}
+
+	float BaseSpeed = Character->GetJogSpeed();
+
+	if (IsCrouching())
+	{
+		BaseSpeed = Character->GetCrouchSpeed();
+	}
+	else
+	{
+		switch (GetEffectiveGait())
+		{
+		case EMovementGait::MG_Walking: BaseSpeed = Character->GetWalkSpeed();
+			break;
+		case EMovementGait::MG_Sprinting: BaseSpeed = Character->GetSprintSpeed();
+			break;
+		case EMovementGait::MG_Jogging:
+		default: BaseSpeed = Character->GetJogSpeed();
+			break;
+		}
+	}
+
+	const UCharacterEffectComponent* Effects = Character->GetCharacterEffectComponent();
+
+	if (Effects)
+	{
+		BaseSpeed = Effects->GetModifiedAttributeValue(Attribute_MovementSpeed, BaseSpeed);
+	}
+
+	return FMath::Max(0.f, BaseSpeed);
 }
 
 void USurvivalCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)

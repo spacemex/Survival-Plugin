@@ -36,6 +36,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float CrouchSpeed = 75.f;
 
+	void HandlePeriodicEffect(FGameplayTag EffectTag, float Magnitude, int32 StackCount);
+
 public:
 	ABaseCharacter(const FObjectInitializer& ObjectInitializer);
 

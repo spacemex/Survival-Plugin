@@ -24,4 +24,11 @@ namespace SurvivalGameplayTags
 
 	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Exhausted, "Status.Effect.Exhausted");
 	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Stunned, "Status.Effect.Stunned");
+	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Slowed, "Status.Effect.Slowed");
+	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Hasted, "Status.Effect.Hasted");
+	UE_DEFINE_GAMEPLAY_TAG(Status_Effect_Poisoned, "Status.Effect.Poisoned");
+
+	UE_DEFINE_GAMEPLAY_TAG(Attribute, "Attribute");
+
+	UE_DEFINE_GAMEPLAY_TAG(Attribute_MovementSpeed, "Attribute.MovementSpeed");
 }

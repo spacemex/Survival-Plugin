@@ -6,9 +6,16 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Types/CharacterEffectTypes.h"
+#include "TimerManager.h"
 #include "CharacterEffectComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCharacterEffectChanged, FGameplayTag, EffectTag, int32, StackCount);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCharacterEffectPeriodic, FGameplayTag, EffectTag, float, Magnitude,
+                                               int32, StackCount);
+
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnCharacterEffectPeriodicNative, FGameplayTag, float, int32);
+
 
 UCLASS(ClassGroup=(Custom), Blueprintable, meta=(BlueprintSpawnableComponent))
 class SURVIVALTEMPLATE_API UCharacterEffectComponent : public UActorComponent
@@ -27,6 +34,12 @@ private:
 	void RemoveEffectAtIndex(int32 Index);
 	void ScheduleNextExpiration();
 	void ExpireEffects();
+
+	TMap<FGameplayTag, FTimerHandle> PeriodicEffectTimers;
+
+	void StartPeriodicTimer(const FActiveCharacterEffect& Effect);
+	void StopPeriodicTimer(FGameplayTag EffectTag);
+	void ExecutePeriodicEffect(FGameplayTag EffectTag);
 
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -56,4 +69,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Effects")
 	TArray<FActiveCharacterEffect> GetActiveEffects() const;
+
+	UFUNCTION(BlueprintPure, Category="Effects|Modifiers")
+	float GetModifiedAttributeValue(FGameplayTag AttributeTag, float BaseValue) const;
+	
+	UPROPERTY(BlueprintAssignable, Category="Effects|Periodic")
+	FOnCharacterEffectPeriodic OnEffectPeriodic;
+
+	FOnCharacterEffectPeriodicNative OnEffectPeriodicNative;
 };

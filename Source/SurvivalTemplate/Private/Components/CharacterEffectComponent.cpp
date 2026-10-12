@@ -8,6 +8,29 @@
 #include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
 
+namespace
+{
+	bool MatchingModifiers(const TArray<FCharacterEffectModifier>& A, const TArray<FCharacterEffectModifier>& B)
+	{
+		if (A.Num() != B.Num())
+		{
+			return false;
+		}
+
+		for (int32 Index = 0; Index < A.Num(); ++Index)
+		{
+			if (A[Index].AttributeTag != B[Index].AttributeTag ||
+				A[Index].Operation != B[Index].Operation ||
+				!FMath::IsNearlyEqual(A[Index].Magnitude, B[Index].Magnitude))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
+
 UCharacterEffectComponent::UCharacterEffectComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -23,6 +46,18 @@ void UCharacterEffectComponent::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 
 void UCharacterEffectComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (GetWorld())
+	{
+		FTimerManager& Timers = GetWorld()->GetTimerManager();
+
+		for (auto& Entry : PeriodicEffectTimers)
+		{
+			Timers.ClearTimer(Entry.Value);
+		}
+	}
+
+	PeriodicEffectTimers.Empty();
+
 	if (GetWorld())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(ExpirationTimer);
@@ -57,16 +92,42 @@ bool UCharacterEffectComponent::ApplyEffect(const FCharacterEffectSpec& Spec)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority() || !GetWorld()) return false;
 
-	if (!Spec.EffectTag.IsValid() || Spec.EffectTag == SurvivalGameplayTags::Status_Effect || !Spec.EffectTag.
-		MatchesTag(SurvivalGameplayTags::Status_Effect))
+	using namespace SurvivalGameplayTags;
+
+	if (!Spec.EffectTag.IsValid() || Spec.EffectTag == Status_Effect || !Spec.EffectTag.MatchesTag(Status_Effect))
 	{
 		return false;
 	}
 
-	for (const FGameplayTag& Tag :
-	     Spec.GrantedTags.GetGameplayTagArray())
+	if (!FMath::IsFinite(Spec.DurationSeconds) || !FMath::IsFinite(Spec.PeriodicIntervalSeconds) || !
+		FMath::IsFinite(Spec.PeriodicMagnitudePerStack) || Spec.PeriodicIntervalSeconds < 0.f || (Spec.
+			PeriodicIntervalSeconds > 0.f && Spec.PeriodicIntervalSeconds < 0.1f))
 	{
-		if (Tag == Spec.EffectTag || Tag.MatchesTag(SurvivalGameplayTags::Movement_State))
+		return false;
+	}
+
+	for (const FGameplayTag& Tag : Spec.GrantedTags.GetGameplayTagArray())
+	{
+		if (Tag == Spec.EffectTag || Tag.MatchesTag(Movement_State))
+		{
+			return false;
+		}
+	}
+
+	for (const FCharacterEffectModifier& Modifier : Spec.Modifiers)
+	{
+		if (!Modifier.AttributeTag.IsValid() || !FMath::IsFinite(Modifier.Magnitude))
+		{
+			return false;
+		}
+
+		if (Modifier.Operation == ECharacterModifierOperation::Multiply && Modifier.Magnitude < 0.f)
+		{
+			return false;
+		}
+
+		if (Modifier.Operation != ECharacterModifierOperation::Add && Modifier.Operation !=
+			ECharacterModifierOperation::Multiply)
 		{
 			return false;
 		}
@@ -84,7 +145,12 @@ bool UCharacterEffectComponent::ApplyEffect(const FCharacterEffectSpec& Spec)
 	{
 		if (Effect.EffectTag != Spec.EffectTag) continue;
 
-		if (!Effect.GrantedTags.HasAllExact(Spec.GrantedTags) || !Spec.GrantedTags.HasAllExact(Effect.GrantedTags))
+		if (!Effect.GrantedTags.HasAllExact(Spec.GrantedTags) || !Spec.GrantedTags.HasAllExact(Effect.GrantedTags) || !
+			MatchingModifiers(Effect.Modifiers, Spec.Modifiers) || Effect.MaxStacks != FMath::Max(1, Spec.MaxStacks) ||
+			!FMath::IsNearlyEqual(Effect.DurationSeconds, FMath::Max(0.f, Spec.DurationSeconds)) || Effect.
+			bRefreshDurationOnReapply != Spec.bRefreshDurationOnReapply || !
+			FMath::IsNearlyEqual(Effect.PeriodicIntervalSeconds, Spec.PeriodicIntervalSeconds) || !FMath::IsNearlyEqual(
+				Effect.PeriodicMagnitudePerStack, Spec.PeriodicMagnitudePerStack))
 		{
 			return false;
 		}
@@ -100,16 +166,18 @@ bool UCharacterEffectComponent::ApplyEffect(const FCharacterEffectSpec& Spec)
 		if (Effect.DurationSeconds > 0.f && Effect.bRefreshDurationOnReapply)
 		{
 			Effect.EndServerTimeSeconds = Now + Effect.DurationSeconds;
-
 			bChanged = true;
 		}
 
 		if (bChanged)
 		{
-			OnEffectChanged.Broadcast(Effect.EffectTag, Effect.StackCount);
+			const FGameplayTag Tag = Effect.EffectTag;
+			const int32 Stacks = Effect.StackCount;
 
 			ScheduleNextExpiration();
 			GetOwner()->ForceNetUpdate();
+
+			OnEffectChanged.Broadcast(Tag, Stacks);
 		}
 
 		return bChanged;
@@ -119,11 +187,18 @@ bool UCharacterEffectComponent::ApplyEffect(const FCharacterEffectSpec& Spec)
 
 	NewEffect.EffectTag = Spec.EffectTag;
 	NewEffect.GrantedTags = Spec.GrantedTags;
+	NewEffect.Modifiers = Spec.Modifiers;
+
 	NewEffect.StackCount = 1;
 	NewEffect.MaxStacks = FMath::Max(1, Spec.MaxStacks);
+
 	NewEffect.DurationSeconds = FMath::Max(0.f, Spec.DurationSeconds);
 
 	NewEffect.bRefreshDurationOnReapply = Spec.bRefreshDurationOnReapply;
+
+	NewEffect.PeriodicIntervalSeconds = Spec.PeriodicIntervalSeconds;
+
+	NewEffect.PeriodicMagnitudePerStack = Spec.PeriodicMagnitudePerStack;
 
 	NewEffect.EndServerTimeSeconds = NewEffect.DurationSeconds > 0.f ? Now + NewEffect.DurationSeconds : 0.f;
 
@@ -137,10 +212,12 @@ bool UCharacterEffectComponent::ApplyEffect(const FCharacterEffectSpec& Spec)
 		Status->GrantStatusTag(Tag);
 	}
 
-	OnEffectChanged.Broadcast(NewEffect.EffectTag, NewEffect.StackCount);
-
 	ScheduleNextExpiration();
+	StartPeriodicTimer(NewEffect);
+
 	GetOwner()->ForceNetUpdate();
+
+	OnEffectChanged.Broadcast(NewEffect.EffectTag, 1);
 
 	return true;
 }
@@ -168,6 +245,7 @@ void UCharacterEffectComponent::RemoveEffectAtIndex(int32 Index)
 
 	const FActiveCharacterEffect RemovedEffect = ActiveEffects[Index];
 
+	StopPeriodicTimer(RemovedEffect.EffectTag);
 	ActiveEffects.RemoveAt(Index);
 
 	ABaseCharacter* Character = Cast<ABaseCharacter>(GetOwner());
@@ -296,6 +374,41 @@ TArray<FActiveCharacterEffect> UCharacterEffectComponent::GetActiveEffects() con
 	return ActiveEffects;
 }
 
+float UCharacterEffectComponent::GetModifiedAttributeValue(FGameplayTag AttributeTag, float BaseValue) const
+{
+	if (!AttributeTag.IsValid())
+	{
+		return BaseValue;
+	}
+
+	float Additive = 0.f;
+	float Multiplier = 1.f;
+
+	for (const FActiveCharacterEffect& Effect : ActiveEffects)
+	{
+		for (const FCharacterEffectModifier& Modifier :
+		     Effect.Modifiers)
+		{
+			if (Modifier.AttributeTag != AttributeTag)
+			{
+				continue;
+			}
+
+			switch (Modifier.Operation)
+			{
+			case ECharacterModifierOperation::Add:
+				Additive += Modifier.Magnitude * Effect.StackCount;
+				break;
+			case ECharacterModifierOperation::Multiply:
+				Multiplier *= FMath::Pow(Modifier.Magnitude, Effect.StackCount);
+				break;
+			}
+		}
+	}
+
+	return (BaseValue + Additive) * Multiplier;
+}
+
 void UCharacterEffectComponent::OnRep_ActiveEffects(const TArray<FActiveCharacterEffect>& PreviousEffects)
 {
 	for (const FActiveCharacterEffect& Effect : ActiveEffects)
@@ -325,4 +438,62 @@ void UCharacterEffectComponent::OnRep_ActiveEffects(const TArray<FActiveCharacte
 			OnEffectChanged.Broadcast(Previous.EffectTag, 0);
 		}
 	}
+}
+
+void UCharacterEffectComponent::StartPeriodicTimer(const FActiveCharacterEffect& Effect)
+{
+	if (!GetWorld() || !GetOwner() || !GetOwner()->HasAuthority() || Effect.PeriodicIntervalSeconds <= 0.f)
+	{
+		return;
+	}
+
+	FTimerHandle& Handle = PeriodicEffectTimers.FindOrAdd(Effect.EffectTag);
+	FTimerDelegate Delegate = FTimerDelegate::CreateUObject(this, &UCharacterEffectComponent::ExecutePeriodicEffect,
+	                                                        Effect.EffectTag);
+
+	GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, Effect.PeriodicIntervalSeconds, true);
+}
+
+void UCharacterEffectComponent::StopPeriodicTimer(FGameplayTag EffectTag)
+{
+	if (FTimerHandle* Handle =
+		PeriodicEffectTimers.Find(EffectTag))
+	{
+		if (GetWorld())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(*Handle);
+		}
+
+		PeriodicEffectTimers.Remove(EffectTag);
+	}
+}
+
+void UCharacterEffectComponent::ExecutePeriodicEffect(FGameplayTag EffectTag)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !GetWorld())
+	{
+		return;
+	}
+
+	const FActiveCharacterEffect* Effect = ActiveEffects.FindByPredicate(
+		[EffectTag](const FActiveCharacterEffect& Entry)
+		{
+			return Entry.EffectTag == EffectTag;
+		});
+
+	if (!Effect || Effect->PeriodicIntervalSeconds <= 0.f)
+	{
+		return;
+	}
+
+	if (Effect->EndServerTimeSeconds > 0.f && GetWorld()->GetTimeSeconds() >= Effect->EndServerTimeSeconds)
+	{
+		return;
+	}
+
+	const int32 Stacks = Effect->StackCount;
+	const float Magnitude = Effect->PeriodicMagnitudePerStack * Stacks;
+
+	OnEffectPeriodicNative.Broadcast(EffectTag, Magnitude, Stacks);
+	OnEffectPeriodic.Broadcast(EffectTag, Magnitude, Stacks);
 }

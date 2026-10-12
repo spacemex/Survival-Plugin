@@ -6,6 +6,26 @@
 #include "GameplayTagContainer.h"
 #include "CharacterEffectTypes.generated.h"
 
+UENUM()
+enum class ECharacterModifierOperation : uint8
+{
+	Add,
+	Multiply
+};
+
+USTRUCT(BlueprintType)
+struct SURVIVALTEMPLATE_API FCharacterEffectModifier
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
+	FGameplayTag AttributeTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
+	ECharacterModifierOperation Operation = ECharacterModifierOperation::Multiply;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
+	float Magnitude = 1.f;
+};
+
 USTRUCT(BlueprintType)
 struct SURVIVALTEMPLATE_API FCharacterEffectSpec
 {
@@ -22,6 +42,15 @@ struct SURVIVALTEMPLATE_API FCharacterEffectSpec
 	int32 MaxStacks = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Effect")
 	bool bRefreshDurationOnReapply = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Effect|Modifiers")
+	TArray<FCharacterEffectModifier> Modifiers;
+	// 0 Disables Periodic Execution
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Effect|Periodic", meta=(ClampMin="0.0"))
+	float PeriodicIntervalSeconds = 0.f;
+	// Magnitude Of Each Execution Before Applying Stack Count
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Effect|Periodic")
+	float PeriodicMagnitudePerStack = 0.f;
 };
 
 USTRUCT(BlueprintType)
@@ -48,4 +77,12 @@ struct SURVIVALTEMPLATE_API FActiveCharacterEffect
 	float EndServerTimeSeconds = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Effect")
 	bool bRefreshDurationOnReapply = true;
+
+
+	UPROPERTY(BlueprintReadOnly, Category="Effect|Modifiers")
+	TArray<FCharacterEffectModifier> Modifiers;
+	UPROPERTY(BlueprintReadOnly, Category="Effect|Periodic")
+	float PeriodicIntervalSeconds = 0.f;
+	UPROPERTY(BlueprintReadOnly, Category="Effect|Periodic")
+	float PeriodicMagnitudePerStack = 0.f;
 };
